@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OfferPilot · AI 模拟面试教练</title>
+  <style>
+    :root { color-scheme: light; --navy: #17375e; --blue: #2e75b6; --muted: #6b7a8c; --bg: #f5f8fc; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; color: var(--navy); background: var(--bg); }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 48px 24px 72px; }
+    .hero { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 40px; align-items: center; padding: 48px; border-radius: 24px; background: linear-gradient(135deg, #17375e, #2e75b6); color: #fff; }
+    .eyebrow { margin: 0 0 12px; font-size: 12px; letter-spacing: 0.18em; opacity: 0.8; }
+    h1 { margin: 0 0 16px; font-size: clamp(32px, 4vw, 48px); line-height: 1.15; }
+    .hero p { margin: 0; color: rgba(255,255,255,0.86); line-height: 1.8; }
+    .badge { display: inline-block; margin-top: 20px; padding: 8px 14px; border: 1px solid rgba(255,255,255,0.4); border-radius: 999px; font-size: 13px; }
+    .mock { padding: 20px; border-radius: 18px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.24); }
+    .mock-row { height: 12px; margin: 10px 0; border-radius: 6px; background: rgba(255,255,255,0.28); }
+    .mock-row.short { width: 62%; }
+    .mock-row.blue { background: rgba(255,255,255,0.65); }
+    section { margin-top: 48px; }
+    h2 { font-size: 24px; margin: 0 0 20px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .card { padding: 22px; border-radius: 16px; background: #fff; border: 1px solid #e4ecf5; box-shadow: 0 8px 24px rgba(23,55,94,0.05); }
+    .card h3 { margin: 0 0 10px; font-size: 17px; }
+    .card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
+    .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; counter-reset: step; }
+    .flow div { padding: 18px 14px; border-radius: 14px; background: #fff; border: 1px solid #e4ecf5; font-size: 14px; text-align: center; }
+    .flow div::before { counter-increment: step; content: counter(step); display: block; width: 28px; height: 28px; margin: 0 auto 10px; line-height: 28px; border-radius: 50%; background: var(--blue); color: #fff; font-weight: 700; }
+    .tech { display: flex; flex-wrap: wrap; gap: 10px; }
+    .tech span { padding: 8px 14px; border-radius: 999px; background: #fff; border: 1px solid #d8e5f2; color: var(--blue); font-size: 13px; }
+    footer { margin-top: 56px; color: var(--muted); font-size: 13px; text-align: center; }
+    @media (max-width: 820px) { .hero { grid-template-columns: 1fr; padding: 32px; } .grid { grid-template-columns: 1fr; } .flow { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">OFFERPILOT · AI INTERVIEW COACH</p>
+        <h1>把一次真实的技术面试，装进浏览器。</h1>
+        <p>面向 Java 后端与 Java+AI 求职者的垂直 AI 模拟面试教练。选岗位、传简历、多轮追问、五维评分、薄弱点复练，一场面试完整闭环。</p>
+        <span class="badge">P0 已交付 · 本地 Docker 一键启动</span>
+      </div>
+      <div class="mock" aria-hidden="true">
+        <div class="mock-row blue"></div>
+        <div class="mock-row"></div>
+        <div class="mock-row short"></div>
+        <div class="mock-row"></div>
+        <div class="mock-row blue"></div>
+        <div class="mock-row short"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>核心能力</h2>
+      <div class="grid">
+        <article class="card"><h3>个性化蓝图</h3><p>结合岗位 JD、简历技能与题库生成 6–10 道题，覆盖基础、项目与场景追问。</p></article>
+        <article class="card"><h3>多轮追问</h3><p>回答后实时评估并追问，支持提示与跳过，SSE 流式输出模拟真实对话节奏。</p></article>
+        <article class="card"><h3>五维报告</h3><p>技术准确性、技术深度、项目表现、表达逻辑、岗位匹配度评分，逐题复盘缺失要点。</p></article>
+        <article class="card"><h3>成长记录</h3><p>历史场次、平均分、最高分、分数趋势与五维均值，薄弱点推荐可练题目。</p></article>
+        <article class="card"><h3>练习模式</h3><p>每题回答后立即返回正确性、得分、点评与缺失要点，适合高频刷题。</p></article>
+        <article class="card"><h3>运营后台</h3><p>管理员维护题库、搜索与上下架；面试场次默认不限，可通过配置恢复每日额度。</p></article>
+      </div>
+    </section>
+
+    <section>
+      <h2>使用流程</h2>
+      <div class="flow">
+        <div>选择岗位</div>
+        <div>上传简历</div>
+        <div>生成蓝图</div>
+        <div>多轮面试</div>
+        <div>报告与复练</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>技术栈</h2>
+      <div class="tech">
+        <span>Java 21</span><span>Spring Boot 3.5</span><span>Spring AI</span>
+        <span>MyBatis-Plus</span><span>Flyway</span><span>MySQL</span>
+        <span>Vue 3</span><span>TypeScript</span><span>Element Plus</span>
+        <span>Docker Compose</span><span>Nginx</span><span>DeepSeek</span>
+      </div>
+    </section>
+
+    <footer>OfferPilot · 本地演示版 · 数据与简历仅保存在本机 Docker 卷中</footer>
+  </main>
+</body>
+</html>

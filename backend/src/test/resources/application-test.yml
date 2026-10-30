@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:offerpilot_test;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: false
+  ai:
+    openai:
+      api-key: test-key
+
+app:
+  ai:
+    enabled: false
+    allow-private-base-url: true
+  sse:
+    sync: true
+  jwt:
+    secret: ${JWT_SECRET:SrRRpFGv51wnxllAChZ6Ql1Bty5dvWIGIzbde9nqSxwIkjryZELF+htOBHGb6pX7jHjF0JHXoJUOyRtO7YsStQ==}
+  storage:
+    local-root: ./target/test-uploads
+

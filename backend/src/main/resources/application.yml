@@ -1,0 +1,73 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: offerpilot
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    placeholder-replacement: false
+  jackson:
+    default-property-inclusion: non_null
+    time-zone: Asia/Shanghai
+  ai:
+    openai:
+      base-url: https://api.deepseek.com
+      api-key: ${DEEPSEEK_API_KEY:demo-key}
+      chat:
+        options:
+          model: deepseek-chat
+          temperature: 0.4
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+
+app:
+  jwt:
+    access-token-ttl: PT2H
+    refresh-token-ttl: P7D
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  ai:
+    enabled: ${APP_AI_ENABLED:false}
+    allow-private-base-url: ${AI_ALLOW_PRIVATE_BASE_URL:false}
+    blueprint-timeout: ${AI_BLUEPRINT_TIMEOUT:PT25S}
+  quota:
+    enforce: ${APP_QUOTA_ENFORCE:false}
+    free-daily-sessions: 3
+    free-daily-tokens: 200000
+  storage:
+    local-root: ${OFFERPILOT_UPLOAD_DIR:./data/uploads}
+    max-size: 10485760
+
+logging:
+  pattern:
+    level: "%5p [%X{traceId:-}]"

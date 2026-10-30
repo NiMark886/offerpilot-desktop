@@ -1,0 +1,74 @@
+{
+  "generatedAt": "2026-10-27T10:51:17+08:00",
+  "baseUrl": "http://localhost:8080",
+  "users": 20,
+  "wallSeconds": 0.686,
+  "successUsers": 20,
+  "failedUsers": 0,
+  "successRate": 100.0,
+  "throughputUsersPerSecond": 29.157,
+  "environment": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.14.4",
+    "cpuCount": 20
+  },
+  "steps": {
+    "answer_sse": {
+      "count": 20,
+      "success": 20,
+      "p50Seconds": 0.146,
+      "p95Seconds": 0.241,
+      "p99Seconds": 0.247
+    },
+    "interview_create": {
+      "count": 20,
+      "success": 20,
+      "p50Seconds": 0.061,
+      "p95Seconds": 0.081,
+      "p99Seconds": 0.102
+    },
+    "interview_finish": {
+      "count": 20,
+      "success": 20,
+      "p50Seconds": 0.014,
+      "p95Seconds": 0.024,
+      "p99Seconds": 0.028
+    },
+    "interview_start": {
+      "count": 20,
+      "success": 20,
+      "p50Seconds": 0.049,
+      "p95Seconds": 0.063,
+      "p99Seconds": 0.065
+    },
+    "job_templates": {
+      "count": 20,
+      "success": 20,
+      "p50Seconds": 0.026,
+      "p95Seconds": 0.033,
+      "p99Seconds": 0.035
+    },
+    "register": {
+      "count": 20,
+      "success": 20,
+      "p50Seconds": 0.156,
+      "p95Seconds": 0.227,
+      "p99Seconds": 0.238
+    },
+    "report_generate": {
+      "count": 20,
+      "success": 20,
+      "p50Seconds": 0.012,
+      "p95Seconds": 0.018,
+      "p99Seconds": 0.019
+    },
+    "resume_upload": {
+      "count": 20,
+      "success": 20,
+      "p50Seconds": 0.08,
+      "p95Seconds": 0.134,
+      "p99Seconds": 0.138
+    }
+  },
+  "errors": []
+}
