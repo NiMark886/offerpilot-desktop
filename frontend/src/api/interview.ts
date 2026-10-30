@@ -370,33 +370,19 @@ export const adminTrackApi = {
   list: () => http.get<never, AdminTrack[]>('/admin/tracks')
 }
 
-const ACCESS_KEY = 'offerpilot_access_token'
-const REFRESH_KEY = 'offerpilot_refresh_token'
-const USER_KEY = 'offerpilot_user'
-
 export async function streamAnswer(
   sessionId: number,
   questionId: number,
   content: string,
   handlers: StreamHandlers
 ): Promise<void> {
-  const token = localStorage.getItem(ACCESS_KEY)
   const response = await fetch(`${apiBaseUrl()}/interviews/${sessionId}/answers`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify({ questionId, content })
   })
-
-  if (response.status === 401) {
-    localStorage.removeItem(ACCESS_KEY)
-    localStorage.removeItem(REFRESH_KEY)
-    localStorage.removeItem(USER_KEY)
-    window.location.assign('/login')
-    throw new Error('登录已过期')
-  }
 
   if (!response.ok || !response.body) {
     const body = await response.json().catch(() => null)

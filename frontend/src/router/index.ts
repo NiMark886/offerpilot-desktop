@@ -1,6 +1,5 @@
 import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
 import { isDesktopRuntime } from '@/api/base'
-import { useAuthStore } from '@/stores/auth'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -16,11 +15,6 @@ const router = createRouter({
       name: 'home',
       component: () => import('@/views/HomeView.vue'),
       meta: { requiresAuth: true }
-    },
-    {
-      path: '/login',
-      name: 'login',
-      component: () => import('@/views/LoginView.vue')
     },
     {
       path: '/interviews/:id',
@@ -44,6 +38,12 @@ const router = createRouter({
       path: '/resume-review',
       name: 'resume-review',
       component: () => import('@/views/ResumeReviewView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/resume-builder',
+      name: 'resume-builder',
+      component: () => import('@/views/ResumeBuilderView.vue'),
       meta: { requiresAuth: true }
     },
     {
@@ -75,18 +75,6 @@ const router = createRouter({
       redirect: '/'
     }
   ]
-})
-
-router.beforeEach((to) => {
-  const auth = useAuthStore()
-  const desktop = isDesktopRuntime()
-  if (to.meta.requiresAuth && !auth.isAuthenticated && !desktop) {
-    return { name: 'login', query: { redirect: to.fullPath } }
-  }
-  if (to.name === 'login' && (auth.isAuthenticated || desktop)) {
-    return { name: 'home' }
-  }
-  return true
 })
 
 export default router

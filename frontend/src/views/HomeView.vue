@@ -84,11 +84,6 @@ onMounted(async () => {
   }
 })
 
-async function handleLogout() {
-  await auth.logout()
-  router.replace({ name: 'login' })
-}
-
 function startInterview(job: JobTemplate) {
   selectedJob.value = job
   customSetup.value = false
@@ -159,10 +154,10 @@ function focusTags(job: JobTemplate): string[] {
         >
           题库管理
         </el-button>
+        <el-button link type="primary" @click="router.push('/resume-builder')">写简历</el-button>
         <el-button link type="primary" @click="router.push('/resume-review')">简历评估</el-button>
         <el-button link type="primary" @click="router.push('/history')">成长记录</el-button>
         <el-button link type="primary" @click="router.push('/settings')">API 设置</el-button>
-        <el-button link type="primary" @click="handleLogout">退出登录</el-button>
       </div>
     </header>
 

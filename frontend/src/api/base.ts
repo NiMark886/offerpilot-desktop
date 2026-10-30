@@ -1,10 +1,6 @@
 declare global {
   interface Window {
     __OFFERPILOT_API_BASE__?: string
-    offerpilotDesktop?: {
-      isElectron?: boolean
-      apiBase?: string
-    }
   }
 }
 
