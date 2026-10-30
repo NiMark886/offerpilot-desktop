@@ -69,11 +69,13 @@ Resume assessment is now four-part: education 25%, relevant skills 25%, merged i
 
 There is also a standalone resume review page at `#/resume-review`: choose/upload a resume, optionally select a job template or paste a JD, then get scores plus a detailed issue list with severity, evidence and fix suggestions. Backend endpoint: `POST /api/resumes/{id}/evaluation`.
 
+The resume builder at `#/resume-builder` stores structured drafts in H2, renders an A4 single-column preview, and exports PDF through Electron `printToPDF` or DOCX through the backend (Apache POI). Both exports use the native save dialog. It supports per-section body font size, global font sizes, line spacing, letter spacing and one-page auto-fit. Draft API: `/api/resume-drafts`.
+
 ## Verified
 
 - Installed with the generated NSIS installer.
 - Starts without system Java/MySQL.
-- Auto-login opens the home page.
+- No login screen; the app opens the home page directly as the local admin.
 - `app.ai.enabled=true` by default.
 - Saved provider key test succeeds (`DeepSeek`, `deepseek-v4-flash`).
 - Closing the window stops the Java sidecar and releases port 18080.

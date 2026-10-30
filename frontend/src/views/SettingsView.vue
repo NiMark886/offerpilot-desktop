@@ -71,7 +71,6 @@ onMounted(async () => {
     try {
       await auth.fetchMe()
     } catch {
-      router.replace('/login')
       return
     }
   }
