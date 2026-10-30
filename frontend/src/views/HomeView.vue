@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BrandBlock from '@/components/BrandBlock.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { jobApi, type JobTemplate } from '@/api/job'
@@ -147,7 +148,7 @@ function focusTags(job: JobTemplate): string[] {
 <template>
   <div class="home-page">
     <header class="topbar">
-      <div class="brand">OfferPilot</div>
+      <BrandBlock />
       <div class="user-area">
         <span class="user-name">{{ auth.user?.nickname || '同学' }}</span>
         <el-button
@@ -158,6 +159,7 @@ function focusTags(job: JobTemplate): string[] {
         >
           题库管理
         </el-button>
+        <el-button link type="primary" @click="router.push('/resume-review')">简历评估</el-button>
         <el-button link type="primary" @click="router.push('/history')">成长记录</el-button>
         <el-button link type="primary" @click="router.push('/settings')">API 设置</el-button>
         <el-button link type="primary" @click="handleLogout">退出登录</el-button>

@@ -25,6 +25,40 @@ export interface ResumeView {
   createdAt: string
 }
 
+export interface ResumeIssue {
+  category: string
+  severity: 'HIGH' | 'MEDIUM' | 'LOW' | string
+  title: string
+  detail: string
+  suggestion: string
+  evidence: string
+}
+
+export interface ResumeAssessment {
+  score: number
+  educationScore: number
+  skillsScore: number
+  experienceScore: number
+  layoutScore: number
+  weights: Record<string, number>
+  aiGenerated: boolean
+  comment: string
+  issues: ResumeIssue[]
+}
+
+export interface ResumeEvaluation {
+  resumeId: number
+  fileName: string
+  jobTitle: string
+  assessment: ResumeAssessment
+}
+
+export interface ResumeEvaluationRequest {
+  jobTemplateId?: number
+  jobTitle?: string
+  jdText?: string
+}
+
 export const resumeApi = {
   list: () => http.get<never, ResumeView[]>('/resumes'),
 
@@ -35,6 +69,9 @@ export const resumeApi = {
   },
 
   get: (id: number) => http.get<never, ResumeView>(`/resumes/${id}`),
+
+  evaluate: (id: number, data: ResumeEvaluationRequest) =>
+    http.post<never, ResumeEvaluation>(`/resumes/${id}/evaluation`, data, { timeout: 120000 }),
 
   remove: (id: number) => http.delete<never, void>(`/resumes/${id}`)
 }

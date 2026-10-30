@@ -70,6 +70,7 @@ async function submit() {
   <div class="auth-page">
     <section class="brand-panel">
       <div class="brand-mark">OfferPilot</div>
+      <p class="brand-note">一切为 AI 输出结果，不同模型可能有不同的结果，仅供参考</p>
       <h1>把一次真实的技术面试，<br />装进桌面。</h1>
       <p>选岗位 · 传简历 · 多轮追问 · 五维评分 · 薄弱点复练</p>
       <div class="brand-points">
@@ -202,7 +203,14 @@ async function submit() {
   font-weight: 700;
   letter-spacing: 0.08em;
   opacity: 0.9;
-  margin-bottom: 28px;
+  margin-bottom: 8px;
+}
+
+.brand-panel .brand-note {
+  margin: 0 0 28px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .brand-panel h1 {

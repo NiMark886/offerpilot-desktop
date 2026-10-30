@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BrandBlock from '@/components/BrandBlock.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { interviewApi, type InterviewSession, type QuestionView } from '@/api/interview'
@@ -83,7 +84,7 @@ async function startInterview() {
   <div class="session-page">
     <header class="topbar">
       <button class="back-link" type="button" @click="backHome">← 返回岗位</button>
-      <div class="brand">OfferPilot</div>
+      <BrandBlock />
       <span class="status">状态：蓝图预览</span>
     </header>
 

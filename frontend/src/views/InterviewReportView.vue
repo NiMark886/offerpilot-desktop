@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BrandBlock from '@/components/BrandBlock.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts/core'
@@ -181,7 +182,7 @@ function goHistory() {
   <div class="report-page">
     <header class="topbar">
       <button class="back-link" type="button" @click="backHome">← 返回岗位</button>
-      <div class="brand">OfferPilot</div>
+      <BrandBlock />
       <el-button link type="primary" @click="goHistory">成长记录</el-button>
     </header>
 

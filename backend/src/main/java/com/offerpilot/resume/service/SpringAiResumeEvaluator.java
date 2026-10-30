@@ -7,11 +7,18 @@ import com.offerpilot.ai.service.ChatClientProvider;
 import com.offerpilot.job.domain.JobTemplate;
 import com.offerpilot.resume.domain.Resume;
 import com.offerpilot.resume.domain.ResumeAssessment;
+import com.offerpilot.resume.domain.ResumeIssue;
 import com.offerpilot.track.domain.RoleProfile;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 /**
  * AI resume evaluation with the target job as context. Falls back to the
@@ -24,7 +31,7 @@ import org.springframework.stereotype.Component;
 public class SpringAiResumeEvaluator implements ResumeEvaluator {
 
     private static final String SCENE = "RESUME_ASSESSMENT";
-    private static final String PROMPT_VERSION = "resume-assessment-v4";
+    private static final String PROMPT_VERSION = "resume-assessment-v5";
     private static final int MAX_RESUME_CHARS = 6000;
 
     private final ChatClientProvider chatClientProvider;
@@ -53,6 +60,7 @@ public class SpringAiResumeEvaluator implements ResumeEvaluator {
         String parsed = resume.getParsedJson() == null ? "{}" : resume.getParsedJson();
         String rawText = truncate(resume.getRawText());
         int layout = fallback.layoutScore(resume);
+        List<ResumeIssue> fallbackIssues = fallback.detectIssues(resume, job, profile);
 
         return aiCallExecutor.call(SCENE, PROMPT_VERSION,
                 () -> {
@@ -68,9 +76,19 @@ public class SpringAiResumeEvaluator implements ResumeEvaluator {
                                       技能深度和项目证据；销售等非技术岗位则评估销售相关能力。
                                     - 实习/工作经历：把实习和工作经历合并评估，重点看与岗位的相关性、
                                       项目深度、职责范围和可量化成果。
+                                    不要评价在读身份、可实习时间、每周到岗天数、实习周期、
+                                    是否可转正、用工形式等到岗安排；简历不需要标注这些信息，
+                                    也不要因此扣分或写入 issues。
                                     排版布局由系统的结构检测单独评分，你不需要返回 layoutScore。
+                                    还要指出简历的具体缺陷，放在 issues 数组中（最多 8 条），每条包含：
+                                    category（如 基本信息/教育背景/技能/项目经历/实习工作/岗位匹配/排版布局）、
+                                    severity（HIGH/MEDIUM/LOW）、title（简短标题）、
+                                    detail（具体问题，不要泛泛而谈）、suggestion（可执行修改建议）、
+                                    evidence（简历中的简短证据或缺失说明）。
                                     只输出 JSON，不要 markdown：
-                                    {"educationScore":0-100,"skillsScore":0-100,"experienceScore":0-100,"comment":"一句中文点评"}
+                                    {"educationScore":0-100,"skillsScore":0-100,"experienceScore":0-100,
+                                     "comment":"一句中文点评",
+                                     "issues":[{"category":"项目经历","severity":"HIGH","title":"项目描述缺少量化结果","detail":"...","suggestion":"...","evidence":"..."}]}
                                     三个分数都必须是 0-100 的整数。
                                     """)
                             .user("""
@@ -83,11 +101,12 @@ public class SpringAiResumeEvaluator implements ResumeEvaluator {
                             .call()
                             .chatResponse();
                 },
-                response -> parse(response.getResult().getOutput().getText(), layout),
+                response -> parse(response.getResult().getOutput().getText(), layout, fallbackIssues),
                 () -> fallback.evaluate(resume, job, profile));
     }
 
-    private ResumeAssessment parse(String content, int layout) throws Exception {
+    private ResumeAssessment parse(String content, int layout,
+                                   List<ResumeIssue> fallbackIssues) throws Exception {
         JsonNode root = objectMapper.readTree(cleanJson(content));
         if (!root.hasNonNull("educationScore")
                 || !root.hasNonNull("skillsScore")
@@ -103,8 +122,76 @@ public class SpringAiResumeEvaluator implements ResumeEvaluator {
                         + experience * ResumeAssessmentService.EXPERIENCE_WEIGHT / 100.0
                         + layout * ResumeAssessmentService.LAYOUT_WEIGHT / 100.0));
         String comment = root.path("comment").asText("AI 已结合目标岗位完成简历评估");
+        List<ResumeIssue> issues = mergeIssues(parseIssues(root.path("issues")), fallbackIssues);
         return new ResumeAssessment(score, education, skills, experience, layout,
-                ResumeAssessmentService.weightMap(), true, comment);
+                ResumeAssessmentService.weightMap(), true, comment, issues);
+    }
+
+    private List<ResumeIssue> parseIssues(JsonNode node) {
+        List<ResumeIssue> issues = new ArrayList<>();
+        if (node == null || !node.isArray()) {
+            return issues;
+        }
+        for (JsonNode item : node) {
+            String title = item.path("title").asText("");
+            String detail = item.path("detail").asText("");
+            if (title.isBlank() || detail.isBlank()) {
+                continue;
+            }
+            String severity = normalizeSeverity(item.path("severity").asText("MEDIUM"));
+            ResumeIssue issue = new ResumeIssue(
+                    item.path("category").asText("简历内容"),
+                    severity,
+                    title,
+                    detail,
+                    item.path("suggestion").asText("请根据问题补充或改写对应内容。"),
+                    truncateEvidence(item.path("evidence").asText("")));
+            if (ResumeIssueFilter.isInternshipAvailabilityIssue(issue)) {
+                continue;
+            }
+            issues.add(issue);
+            if (issues.size() >= 8) {
+                break;
+            }
+        }
+        return issues;
+    }
+
+    private List<ResumeIssue> mergeIssues(List<ResumeIssue> aiIssues, List<ResumeIssue> fallbackIssues) {
+        List<ResumeIssue> merged = new ArrayList<>();
+        Set<String> titles = new LinkedHashSet<>();
+        for (ResumeIssue issue : aiIssues) {
+            if (titles.add(issue.title())) {
+                merged.add(issue);
+            }
+        }
+        for (ResumeIssue issue : fallbackIssues) {
+            if (ResumeIssueFilter.isInternshipAvailabilityIssue(issue)) {
+                continue;
+            }
+            if (titles.add(issue.title())) {
+                merged.add(issue);
+            }
+            if (merged.size() >= 10) {
+                break;
+            }
+        }
+        return merged;
+    }
+
+    private String normalizeSeverity(String value) {
+        String normalized = value == null ? "MEDIUM" : value.trim().toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "HIGH", "MEDIUM", "LOW" -> normalized;
+            default -> "MEDIUM";
+        };
+    }
+
+    private String truncateEvidence(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.length() <= 200 ? value : value.substring(0, 200);
     }
 
     private String truncate(String value) {

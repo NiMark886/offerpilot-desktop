@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BrandBlock from '@/components/BrandBlock.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import * as echarts from 'echarts/core'
@@ -169,7 +170,7 @@ function statusLabel(status: string) {
   <div class="history-page">
     <header class="topbar">
       <button class="back-link" type="button" @click="goGrowth">← 成长记录</button>
-      <div class="brand">OfferPilot</div>
+      <BrandBlock />
       <span class="status">{{ jobCategory || '岗位成长记录' }}</span>
     </header>
 

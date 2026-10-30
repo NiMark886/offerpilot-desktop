@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BrandBlock from '@/components/BrandBlock.vue'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { interviewApi, type GrowthJob } from '@/api/interview'
@@ -34,7 +35,7 @@ function formatDate(value: string | null) {
   <div class="growth-page">
     <header class="topbar">
       <button class="back-link" type="button" @click="goHome">← 返回岗位</button>
-      <div class="brand">OfferPilot</div>
+      <BrandBlock />
       <span class="status">成长记录</span>
     </header>
 

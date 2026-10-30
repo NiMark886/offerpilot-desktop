@@ -2,6 +2,7 @@ package com.offerpilot.interview.web.dto;
 
 import com.offerpilot.resume.domain.ResumeAssessment;
 
+import java.util.List;
 import java.util.Map;
 
 public record ResumeAssessmentView(
@@ -12,7 +13,8 @@ public record ResumeAssessmentView(
         int layoutScore,
         Map<String, Integer> weights,
         boolean aiGenerated,
-        String comment
+        String comment,
+        List<ResumeIssueView> issues
 ) {
 
     public static ResumeAssessmentView from(ResumeAssessment assessment) {
@@ -27,6 +29,7 @@ public record ResumeAssessmentView(
                 assessment.layoutScore(),
                 assessment.weights(),
                 assessment.aiGenerated(),
-                assessment.comment());
+                assessment.comment(),
+                assessment.issues().stream().map(ResumeIssueView::from).toList());
     }
 }

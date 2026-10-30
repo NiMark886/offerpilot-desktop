@@ -1,5 +1,6 @@
 import http from './http'
 import { apiBaseUrl } from './base'
+import type { ResumeIssue } from './resume'
 
 export interface QuestionView {
   id: number
@@ -70,6 +71,7 @@ export interface ResumeAssessment {
   weights: Record<string, number>
   aiGenerated: boolean
   comment: string
+  issues?: ResumeIssue[]
 }
 
 export interface QuestionReview {

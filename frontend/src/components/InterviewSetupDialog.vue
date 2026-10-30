@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadRequestOptions } from 'element-plus'
 import type { JobTemplate } from '@/api/job'
 import { resumeApi, type ResumeView } from '@/api/resume'
@@ -20,6 +20,7 @@ const emit = defineEmits<{
 const resumes = ref<ResumeView[]>([])
 const loading = ref(false)
 const uploading = ref(false)
+const deleting = ref(false)
 const submitting = ref(false)
 
 const form = reactive({
@@ -81,6 +82,35 @@ async function handleUpload(options: UploadRequestOptions) {
     options.onError(error as never)
   } finally {
     uploading.value = false
+  }
+}
+
+async function removeResume() {
+  const resume = selectedResume.value
+  if (!resume) return
+  try {
+    await ElMessageBox.confirm(
+      `确定删除简历「${resume.fileName}」吗？删除后不可恢复。`,
+      '删除简历',
+      {
+        type: 'warning',
+        confirmButtonText: '删除',
+        cancelButtonText: '取消'
+      }
+    )
+  } catch {
+    return
+  }
+  deleting.value = true
+  try {
+    await resumeApi.remove(resume.id)
+    resumes.value = resumes.value.filter((item) => item.id !== resume.id)
+    form.resumeId = resumes.value[0]?.id
+    ElMessage.success('简历已删除')
+  } catch {
+    // 错误提示由 axios 拦截器统一处理
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -161,14 +191,27 @@ async function submit() {
       <section class="field-block">
         <div class="field-title">
           <span>选择简历</span>
-          <el-upload
-            :show-file-list="false"
-            :http-request="handleUpload"
-            accept=".pdf,.docx"
-            :disabled="uploading"
-          >
-            <el-button size="small" :loading="uploading">上传 PDF / DOCX</el-button>
-          </el-upload>
+          <div class="field-actions">
+            <el-upload
+              :show-file-list="false"
+              :http-request="handleUpload"
+              accept=".pdf,.docx"
+              :disabled="uploading"
+            >
+              <el-button size="small" :loading="uploading">上传 PDF / DOCX</el-button>
+            </el-upload>
+            <el-button
+              v-if="resumes.length"
+              link
+              type="danger"
+              size="small"
+              :loading="deleting"
+              :disabled="!form.resumeId || uploading"
+              @click="removeResume"
+            >
+              删除当前简历
+            </el-button>
+          </div>
         </div>
 
         <el-empty
@@ -302,6 +345,12 @@ async function submit() {
   color: #17375e;
   font-size: 14px;
   font-weight: 700;
+}
+
+.field-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .resume-summary {

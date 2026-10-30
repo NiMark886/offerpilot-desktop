@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BrandBlock from '@/components/BrandBlock.vue'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -216,7 +217,7 @@ function backToPreview() {
   <div class="chat-page">
     <header class="topbar">
       <button class="back-link" type="button" @click="backToPreview">← 返回蓝图</button>
-      <div class="brand">OfferPilot</div>
+      <BrandBlock />
       <div class="topbar-right">
         <span v-if="session?.generationMode === 'BANK'" class="mode-tag">题库模式</span>
         <span v-else-if="session?.generationMode === 'AI'" class="mode-tag ai">AI 模式</span>

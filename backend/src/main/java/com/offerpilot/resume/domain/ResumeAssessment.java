@@ -1,10 +1,11 @@
 package com.offerpilot.resume.domain;
 
+import java.util.List;
 import java.util.Map;
 
 /**
  * Resume assessment: education 25%, relevant skills 25%, internship/work
- * experience 40%, layout/structure 10%.
+ * experience 40%, layout/structure 10%, plus concrete defect issues.
  */
 public record ResumeAssessment(
         int score,
@@ -14,6 +15,7 @@ public record ResumeAssessment(
         int layoutScore,
         Map<String, Integer> weights,
         boolean aiGenerated,
-        String comment
+        String comment,
+        List<ResumeIssue> issues
 ) {
 }

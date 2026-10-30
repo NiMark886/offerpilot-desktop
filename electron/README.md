@@ -67,6 +67,8 @@ The API key is stored in the local H2 database, encrypted with the per-install s
 
 Resume assessment is now four-part: education 25%, relevant skills 25%, merged internship/work experience 40%, layout/structure 10%. AI evaluates the first three against the target job; layout is scored by deterministic structural checks (file format, contact info, section headings, length, bullets, dates).
 
+There is also a standalone resume review page at `#/resume-review`: choose/upload a resume, optionally select a job template or paste a JD, then get scores plus a detailed issue list with severity, evidence and fix suggestions. Backend endpoint: `POST /api/resumes/{id}/evaluation`.
+
 ## Verified
 
 - Installed with the generated NSIS installer.

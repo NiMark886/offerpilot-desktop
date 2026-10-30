@@ -6,6 +6,8 @@
 
 当前主交付为 **Electron 桌面版**：`electron/`。它内置 Spring Boot sidecar、jlink JRE 和 H2 本地数据库，安装后无需 Java/MySQL/Node，所有面试数据与 API Key 保存在本机 `%USERPROFILE%\.offerpilot`。
 
+桌面版还提供独立的**简历评估**页面：选择或上传简历、可选目标岗位/JD，输出学历、相关技能、实习/工作经历、排版布局四维评分，并列出具体缺陷与修改建议。接口为 `POST /api/resumes/{id}/evaluation`。
+
 桌面版运行与打包见 `electron/README.md`。
 
 下一步：P1（向量检索、真实 AI 深度评测、支付与增长）。

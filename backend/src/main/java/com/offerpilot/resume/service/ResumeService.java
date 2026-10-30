@@ -89,8 +89,11 @@ public class ResumeService {
     }
 
     public void delete(Long userId, Long resumeId) {
-        loadOwned(userId, resumeId);
+        Resume resume = loadOwned(userId, resumeId);
         resumeMapper.deleteById(resumeId);
+        if (resume.getFilePath() != null) {
+            fileStorage.delete(resume.getFilePath());
+        }
     }
 
     public Resume loadOwned(Long userId, Long resumeId) {

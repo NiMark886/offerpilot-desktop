@@ -23,6 +23,7 @@ import com.offerpilot.interview.web.dto.InterviewReportResult;
 import com.offerpilot.interview.web.dto.InterviewReportView;
 import com.offerpilot.interview.web.dto.QuestionReviewView;
 import com.offerpilot.interview.web.dto.ResumeAssessmentView;
+import com.offerpilot.interview.web.dto.ResumeIssueView;
 import com.offerpilot.interview.web.dto.ScorePoint;
 import com.offerpilot.interview.web.dto.StatsOverview;
 import com.offerpilot.job.domain.JobTemplate;
@@ -32,6 +33,7 @@ import com.offerpilot.resume.domain.ResumeAssessment;
 import com.offerpilot.resume.mapper.ResumeMapper;
 import com.offerpilot.resume.service.ResumeAssessmentService;
 import com.offerpilot.resume.service.ResumeEvaluator;
+import com.offerpilot.resume.service.ResumeIssueFilter;
 import com.offerpilot.track.domain.InterviewTrack;
 import com.offerpilot.track.domain.RoleProfile;
 import com.offerpilot.track.mapper.InterviewTrackMapper;
@@ -670,6 +672,32 @@ public class InterviewReportService {
                                     + skills * 25 / 100.0
                                     + experience * 40 / 100.0
                                     + layout * 10 / 100.0);
+            List<ResumeIssueView> issues = new ArrayList<>();
+            JsonNode issueNodes = root.path("issues");
+            if (issueNodes.isArray()) {
+                for (JsonNode item : issueNodes) {
+                    String title = item.path("title").asText("");
+                    if (title.isBlank()) {
+                        continue;
+                    }
+                    ResumeIssueView issue = new ResumeIssueView(
+                            item.path("category").asText("简历内容"),
+                            item.path("severity").asText("MEDIUM"),
+                            title,
+                            item.path("detail").asText(""),
+                            item.path("suggestion").asText(""),
+                            item.path("evidence").asText(""));
+                    if (ResumeIssueFilter.isInternshipAvailabilityIssue(
+                            issue.category(), issue.title(), issue.detail(),
+                            issue.suggestion(), issue.evidence())) {
+                        continue;
+                    }
+                    issues.add(issue);
+                    if (issues.size() >= 10) {
+                        break;
+                    }
+                }
+            }
             return new ResumeAssessmentView(
                     score,
                     education,
@@ -678,7 +706,8 @@ public class InterviewReportService {
                     layout,
                     ResumeAssessmentService.weightMap(),
                     root.path("aiGenerated").asBoolean(false),
-                    root.path("comment").asText(""));
+                    root.path("comment").asText(""),
+                    issues);
         } catch (Exception ex) {
             return null;
         }

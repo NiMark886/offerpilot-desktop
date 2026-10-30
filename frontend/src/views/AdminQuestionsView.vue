@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BrandBlock from '@/components/BrandBlock.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -399,7 +400,7 @@ function goHome() {
   <div class="admin-page">
     <header class="topbar">
       <button class="back-link" type="button" @click="goHome">← 返回岗位</button>
-      <div class="brand">OfferPilot · 题库管理</div>
+      <BrandBlock suffix="题库管理" />
       <span class="status">ADMIN</span>
     </header>
 
