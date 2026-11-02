@@ -13,7 +13,7 @@
 
     <groupId>com.offerpilot</groupId>
     <artifactId>offerpilot-backend</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.2.0-SNAPSHOT</version>
     <name>offerpilot-backend</name>
     <description>OfferPilot AI interview backend</description>
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import BrandBlock from '@/components/BrandBlock.vue'
+import VoiceInputButton from '@/components/VoiceInputButton.vue'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -20,6 +21,8 @@ const messages = ref<MessageView[]>([])
 const loading = ref(true)
 const sending = ref(false)
 const input = ref('')
+const inputRef = ref<{ focus: () => void } | null>(null)
+const voiceBusy = ref(false)
 const streamingMessageId = ref<number | null>(null)
 const messagesEl = ref<HTMLElement | null>(null)
 const evaluations = ref<Record<number, AnswerEvaluationView>>({})
@@ -53,7 +56,11 @@ const currentQuestion = computed<QuestionView | null>(() => {
 
 const completed = computed(() => session.value?.status === 'COMPLETED')
 const canSend = computed(() =>
-  Boolean(currentQuestion.value) && !sending.value && !completed.value && input.value.trim().length > 0
+  Boolean(currentQuestion.value)
+  && !sending.value
+  && !voiceBusy.value
+  && !completed.value
+  && input.value.trim().length > 0
 )
 
 onMounted(load)
@@ -161,6 +168,14 @@ async function send() {
     streamingMessageId.value = null
     await load({ silent: true })
   }
+}
+
+function appendTranscript(text: string) {
+  const cleaned = text.trim()
+  if (!cleaned) return
+  const current = input.value.trim()
+  input.value = current ? `${current}\n${cleaned}` : cleaned
+  nextTick(() => inputRef.value?.focus())
 }
 
 async function handleHint() {
@@ -280,11 +295,12 @@ function backToPreview() {
           <span class="q-meta">追问 {{ currentQuestion.followUpCount }}/{{ currentQuestion.maxFollowUps }} · 提示 {{ currentQuestion.hintCount }}/1</span>
         </div>
         <el-input
+          ref="inputRef"
           v-model="input"
           type="textarea"
           :rows="3"
           resize="none"
-          placeholder="输入你的回答，Enter 发送，Shift + Enter 换行"
+          placeholder="输入你的回答，Enter 发送，Shift + Enter 换行，也可以点“语音”说答案"
           :disabled="sending"
           @keydown.enter.exact.prevent="send"
         />
@@ -292,19 +308,26 @@ function backToPreview() {
           <div class="actions-left">
             <el-button
               size="small"
-              :disabled="sending || !currentQuestion || currentQuestion.hintCount >= 1"
+              :disabled="sending || voiceBusy || !currentQuestion || currentQuestion.hintCount >= 1"
               @click="handleHint"
             >
               提示
             </el-button>
-            <el-button size="small" :disabled="sending" @click="handleSkip">跳过</el-button>
-            <el-button size="small" type="danger" plain :disabled="sending" @click="handleFinish">
+            <el-button size="small" :disabled="sending || voiceBusy" @click="handleSkip">跳过</el-button>
+            <el-button size="small" type="danger" plain :disabled="sending || voiceBusy" @click="handleFinish">
               结束面试
             </el-button>
           </div>
-          <el-button type="primary" :disabled="!canSend" @click="send">
-            {{ sending ? '面试官思考中…' : '发送' }}
-          </el-button>
+          <div class="actions-right">
+            <VoiceInputButton
+              :disabled="sending || completed || !currentQuestion"
+              @busy="voiceBusy = $event"
+              @transcribed="appendTranscript"
+            />
+            <el-button type="primary" :disabled="!canSend" @click="send">
+              {{ sending ? '面试官思考中…' : '发送' }}
+            </el-button>
+          </div>
         </div>
       </section>
 
@@ -622,6 +645,14 @@ function backToPreview() {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.actions-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .finished {

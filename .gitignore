@@ -24,6 +24,7 @@ frontend/src/**/*.js
 .env
 .env.local
 .env.*.local
+backend/src/main/resources/application-local.yml
 
 # OS
 .DS_Store
@@ -40,6 +41,9 @@ data/uploads/
 # Desktop build artifacts
 electron/ui/
 electron/resources/runtime/
+electron/resources/whisper/
 electron-install-test/
+electron-voice-install-test*/
+.tmp/
 OfferPilot-Electron-*.exe
 ~$*.docx

@@ -5,7 +5,7 @@
 > 目标目录：`E:\work app`  
 > 适用项目：OfferPilot AI 模拟面试（Java 21 + Spring Boot 3.5 + Vue 3）
 
-> **实施更新（2026-10-30）：最终选用 Electron。** 当前可运行工程位于 `electron/`，安装包为 `OfferPilot-Electron-0.1.0-x64-setup.exe`；本文的 Tauri 方案保留作为历史对比。
+> **实施更新（2026-10-30）：最终选用 Electron。** 当前可运行工程位于 `electron/`，安装包为 `OfferPilot-Electron-0.2.0-x64-setup.exe`；本文的 Tauri 方案保留作为历史对比。
 
 ---
 

@@ -6,5 +6,8 @@ contextBridge.exposeInMainWorld('offerpilotDesktop', {
   exportResumePdf: (html, defaultName) =>
     ipcRenderer.invoke('resume:export-pdf', { html, defaultName }),
   saveFile: (data, defaultName, filters) =>
-    ipcRenderer.invoke('file:save', { data, defaultName, filters })
+    ipcRenderer.invoke('file:save', { data, defaultName, filters }),
+  speechStatus: () => ipcRenderer.invoke('speech:status'),
+  transcribeAudio: (data, options) =>
+    ipcRenderer.invoke('speech:transcribe', { data, language: options?.language })
 })

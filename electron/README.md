@@ -11,6 +11,7 @@ Electron main process
 │   ├── H2 file database
 │   ├── local resume storage
 │   └── Spring AI / provider calls
+├── Local Whisper runtime (whisper.cpp + ggml-small-q5_1.bin)
 └── Local data: %USERPROFILE%\.offerpilot
 ```
 
@@ -46,12 +47,13 @@ cd E:\work app\electron
 The script:
 
 1. Builds the frontend with relative asset paths.
-2. Builds and copies the backend jar.
-3. Copies the jlink runtime.
-4. Packages Electron + backend + runtime.
-5. Produces `E:\work app\OfferPilot-Electron-0.1.0-x64-setup.exe`.
+2. Prepares the bundled Whisper runtime and model.
+3. Builds and copies the backend jar.
+4. Copies the jlink runtime.
+5. Packages Electron + backend + runtime + Whisper.
+6. Produces `E:\work app\OfferPilot-Electron-0.2.0-x64-setup.exe`.
 
-The current installer is about 215 MB; the installed app is about 484 MB because it includes Chromium/Electron plus the Spring Boot jar and JRE.
+The current installer is about 390 MB; the installed app is about 676 MB because it includes Chromium/Electron, the Spring Boot jar, the JRE, and the offline Whisper model.
 
 ## Local data
 
@@ -71,6 +73,8 @@ There is also a standalone resume review page at `#/resume-review`: choose/uploa
 
 The resume builder at `#/resume-builder` stores structured drafts in H2, renders an A4 single-column preview, and exports PDF through Electron `printToPDF` or DOCX through the backend (Apache POI). Both exports use the native save dialog. It supports per-section body font size, global font sizes, line spacing, letter spacing and one-page auto-fit. Draft API: `/api/resume-drafts`.
 
+The interview answer composer supports offline voice input. The renderer records audio, converts it to 16 kHz mono WAV, and sends it over IPC to `electron/speech.js`, which runs the bundled `whisper-cli.exe` with `ggml-small-q5_1.bin`. Audio never leaves the machine. The transcript is appended to the input; it is not sent automatically. The settings page at `#/settings` enumerates microphones and speakers (requesting permission so the actual device labels can be read), lets the user choose the input device, output device and recognition language (Chinese / English / auto), and stores them in `localStorage`. It also hosts the AI Provider configuration. The microphone test shows a live dB meter and monitors the microphone through the selected speaker; the speaker test plays a generated ringtone through the selected output using `HTMLMediaElement.setSinkId`.
+
 ## Verified
 
 - Installed with the generated NSIS installer.
@@ -78,6 +82,7 @@ The resume builder at `#/resume-builder` stores structured drafts in H2, renders
 - No login screen; the app opens the home page directly as the local admin.
 - `app.ai.enabled=true` by default.
 - Saved provider key test succeeds (`DeepSeek`, `deepseek-v4-flash`).
+- Microphone permission and the speech IPC path work with a fake audio capture device; a Chinese WAV is transcribed and inserted into the answer box.
 - Closing the window stops the Java sidecar and releases port 18080.
 
 ## Remaining work

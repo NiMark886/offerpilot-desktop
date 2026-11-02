@@ -1,7 +1,8 @@
-const { app, BrowserWindow, dialog, ipcMain } = require('electron')
+const { app, BrowserWindow, dialog, ipcMain, session } = require('electron')
 const { spawn } = require('child_process')
 const fs = require('fs')
 const path = require('path')
+const { createSpeechService } = require('./speech')
 
 const BACKEND_PORT = 18080
 let backendProcess = null
@@ -61,6 +62,17 @@ function stopBackend() {
 }
 
 function registerIpcHandlers() {
+  const speech = createSpeechService({
+    resourceRoot,
+    tempRoot: path.join(dataDir(), 'tmp')
+  })
+  ipcMain.handle('speech:status', () => speech.status())
+  ipcMain.handle('speech:transcribe', async (_event, payload) => {
+    return speech.transcribe(payload && payload.data, {
+      language: payload && payload.language
+    })
+  })
+
   ipcMain.handle('resume:export-pdf', async (_event, payload) => {
     const html = payload && typeof payload.html === 'string' ? payload.html : ''
     if (!html || html.length > 8 * 1024 * 1024) {
@@ -156,6 +168,24 @@ function saveName(value, fallback, extension) {
   return name
 }
 
+function configureMediaPermissions() {
+  const isAppOrigin = (webContents, origin) => {
+    const url = (webContents && webContents.getURL()) || origin || ''
+    return url.startsWith('file://')
+      || url.startsWith('http://localhost')
+      || url.startsWith('http://127.0.0.1')
+  }
+  const isAudioPermission = (permission) =>
+    permission === 'media' || permission === 'audioCapture'
+
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    callback(isAppOrigin(webContents) && isAudioPermission(permission))
+  })
+  session.defaultSession.setPermissionCheckHandler((webContents, permission, requestingOrigin) => {
+    return isAppOrigin(webContents, requestingOrigin) && isAudioPermission(permission)
+  })
+}
+
 function createWindow() {
   const window = new BrowserWindow({
     width: 1000,
@@ -192,6 +222,7 @@ if (!hasLock) {
   registerIpcHandlers()
 
   app.whenReady().then(() => {
+    configureMediaPermissions()
     startBackend()
     createWindow()
   })

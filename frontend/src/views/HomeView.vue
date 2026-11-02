@@ -157,7 +157,7 @@ function focusTags(job: JobTemplate): string[] {
         <el-button link type="primary" @click="router.push('/resume-builder')">写简历</el-button>
         <el-button link type="primary" @click="router.push('/resume-review')">简历评估</el-button>
         <el-button link type="primary" @click="router.push('/history')">成长记录</el-button>
-        <el-button link type="primary" @click="router.push('/settings')">API 设置</el-button>
+        <el-button link type="primary" @click="router.push('/settings')">设置</el-button>
       </div>
     </header>
 

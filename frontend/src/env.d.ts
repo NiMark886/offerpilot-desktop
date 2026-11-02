@@ -11,6 +11,11 @@ interface OfferPilotSaveResult {
   filePath?: string
 }
 
+interface OfferPilotSpeechStatus {
+  ready: boolean
+  reason: string
+}
+
 interface OfferPilotDesktopApi {
   isElectron: boolean
   apiBase: string
@@ -20,6 +25,11 @@ interface OfferPilotDesktopApi {
     defaultName: string,
     filters?: { name: string; extensions: string[] }[]
   ) => Promise<OfferPilotSaveResult>
+  speechStatus: () => Promise<OfferPilotSpeechStatus>
+  transcribeAudio: (
+    data: ArrayBuffer,
+    options?: { language?: string }
+  ) => Promise<{ text: string }>
 }
 
 interface Window {

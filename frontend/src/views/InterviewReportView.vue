@@ -250,7 +250,7 @@ function goHistory() {
                 {{ report.resumeAssessment.comment }}
               </p>
               <p v-if="report.resumeAssessment && !report.resumeAssessment.aiGenerated" class="resume-hint">
-                当前使用规则评估；在 API 设置中配置可用 Key 后，新报告会由 AI 结合目标岗位重新评分。
+                当前使用规则评估；在设置中配置可用 Key 后，新报告会由 AI 结合目标岗位重新评分。
               </p>
               <div v-for="part in resumeParts" :key="part.key" class="resume-row">
                 <span class="resume-label">

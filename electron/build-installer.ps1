@@ -18,6 +18,9 @@ try {
     Pop-Location
 }
 
+Write-Host "Preparing local Whisper runtime..."
+& (Join-Path $PSScriptRoot "scripts/prepare-whisper.ps1")
+
 Write-Host "Building backend jar..."
 Push-Location (Join-Path $appRoot "backend")
 try {
@@ -26,7 +29,7 @@ try {
     Pop-Location
 }
 
-Copy-Item (Join-Path $appRoot "backend/target/offerpilot-backend-0.1.0-SNAPSHOT.jar") `
+Copy-Item (Join-Path $appRoot "backend/target/offerpilot-backend-0.2.0-SNAPSHOT.jar") `
     (Join-Path $PSScriptRoot "resources/backend.jar") -Force
 
 $runtime = Join-Path $PSScriptRoot "resources/runtime"
@@ -57,5 +60,5 @@ $installer = Get-ChildItem (Join-Path $PSScriptRoot "dist") -Filter "*.exe" |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
 if (-not $installer) { throw "Electron installer was not generated" }
-Copy-Item $installer.FullName (Join-Path $appRoot "OfferPilot-Electron-0.1.0-x64-setup.exe") -Force
-Write-Host "Installer ready: $(Join-Path $appRoot 'OfferPilot-Electron-0.1.0-x64-setup.exe')"
+Copy-Item $installer.FullName (Join-Path $appRoot "OfferPilot-Electron-0.2.0-x64-setup.exe") -Force
+Write-Host "Installer ready: $(Join-Path $appRoot 'OfferPilot-Electron-0.2.0-x64-setup.exe')"

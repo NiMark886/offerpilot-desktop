@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import BrandBlock from '@/components/BrandBlock.vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -11,6 +11,15 @@ import {
   type AiProviderStatus
 } from '@/api/provider'
 import { useAuthStore } from '@/stores/auth'
+import { createRingtoneUrl } from '@/utils/ringtone'
+import { openMicrophoneStream, recordingErrorMessage } from '@/utils/voiceRecording'
+import {
+  DEFAULT_MICROPHONE_ID,
+  DEFAULT_SPEAKER_ID,
+  loadVoiceSettings,
+  saveVoiceSettings,
+  type VoiceSettings
+} from '@/utils/voiceSettings'
 
 const auth = useAuthStore()
 const router = useRouter()
@@ -24,6 +33,48 @@ const editingId = ref<number | null>(null)
 const originalProvider = ref<AiProvider | null>(null)
 const submitting = ref(false)
 const testingId = ref<number | null>(null)
+
+interface AudioDeviceOption {
+  deviceId: string
+  label: string
+}
+
+type SinkCapableMediaElement = HTMLMediaElement & {
+  setSinkId?: (sinkId: string) => Promise<void>
+}
+
+const voice = reactive<VoiceSettings>(loadVoiceSettings())
+const microphones = ref<AudioDeviceOption[]>([])
+const speakers = ref<AudioDeviceOption[]>([])
+const detecting = ref(false)
+const voiceError = ref('')
+const micTesting = ref(false)
+const micDb = ref(-60)
+const speakerTesting = ref(false)
+let deviceChangeHandler: (() => void) | null = null
+let micStream: MediaStream | null = null
+let micContext: AudioContext | null = null
+let micAnalyser: AnalyserNode | null = null
+let micMonitor: HTMLAudioElement | null = null
+let micFrame: number | null = null
+let speakerAudio: HTMLAudioElement | null = null
+let speakerUrl: string | null = null
+
+const savedDeviceMissing = computed(() =>
+  voice.deviceId !== DEFAULT_MICROPHONE_ID
+  && !microphones.value.some((device) => device.deviceId === voice.deviceId)
+)
+
+const savedSpeakerMissing = computed(() =>
+  voice.speakerId !== DEFAULT_SPEAKER_ID
+  && !speakers.value.some((device) => device.deviceId === voice.speakerId)
+)
+
+const micLevelPercent = computed(() =>
+  Math.max(0, Math.min(100, Math.round(((micDb.value + 60) / 60) * 100)))
+)
+
+const micDbLabel = computed(() => (micTesting.value ? `${Math.round(micDb.value)} dB` : '-- dB'))
 
 const form = reactive<AiProviderRequest>({
   name: '',
@@ -67,6 +118,20 @@ const modelOptions = computed(() => {
 })
 
 onMounted(async () => {
+  await loadDevices()
+  const needsLabels = microphones.value.length === 0
+    || microphones.value.some((device) => device.label.startsWith('麦克风 '))
+    || speakers.value.length === 0
+    || speakers.value.some((device) => device.label.startsWith('扬声器 '))
+  if (needsLabels) {
+    await detectDevices({ silent: true })
+  }
+  if (navigator.mediaDevices?.addEventListener) {
+    deviceChangeHandler = () => {
+      void loadDevices()
+    }
+    navigator.mediaDevices.addEventListener('devicechange', deviceChangeHandler)
+  }
   if (!auth.user) {
     try {
       await auth.fetchMe()
@@ -76,6 +141,241 @@ onMounted(async () => {
   }
   await load()
 })
+
+onBeforeUnmount(() => {
+  if (deviceChangeHandler) {
+    navigator.mediaDevices?.removeEventListener('devicechange', deviceChangeHandler)
+  }
+  stopMicTest()
+  stopSpeakerTest()
+})
+
+watch(
+  voice,
+  () => saveVoiceSettings({
+    deviceId: voice.deviceId,
+    speakerId: voice.speakerId,
+    language: voice.language
+  }),
+  { deep: true }
+)
+
+watch(
+  () => voice.deviceId,
+  () => {
+    if (micTesting.value) stopMicTest()
+  }
+)
+
+watch(
+  () => voice.speakerId,
+  () => {
+    if (micTesting.value) stopMicTest()
+    if (speakerTesting.value) stopSpeakerTest()
+  }
+)
+
+async function loadDevices() {
+  if (!navigator.mediaDevices?.enumerateDevices) {
+    voiceError.value = '当前环境不支持音频设备检测'
+    return
+  }
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices()
+    const seenInputs = new Set<string>()
+    const seenOutputs = new Set<string>()
+    const inputs: AudioDeviceOption[] = []
+    const outputs: AudioDeviceOption[] = []
+    for (const device of devices) {
+      // default/communications 是浏览器聚合出来的别名，保留“系统默认”即可
+      if (device.deviceId === 'default' || device.deviceId === 'communications') continue
+      if (device.kind === 'audioinput' && !seenInputs.has(device.deviceId)) {
+        seenInputs.add(device.deviceId)
+        inputs.push({
+          deviceId: device.deviceId,
+          label: device.label.trim() || `麦克风 ${inputs.length + 1}`
+        })
+      } else if (device.kind === 'audiooutput' && !seenOutputs.has(device.deviceId)) {
+        seenOutputs.add(device.deviceId)
+        outputs.push({
+          deviceId: device.deviceId,
+          label: device.label.trim() || `扬声器 ${outputs.length + 1}`
+        })
+      }
+    }
+    microphones.value = inputs
+    speakers.value = outputs
+    voiceError.value = ''
+  } catch (error) {
+    voiceError.value = recordingErrorMessage(error)
+  }
+}
+
+async function detectDevices(options: { silent?: boolean } = {}) {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    voiceError.value = '当前环境不支持麦克风'
+    return
+  }
+  detecting.value = true
+  voiceError.value = ''
+  let stream: MediaStream | null = null
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    stream.getTracks().forEach((track) => track.stop())
+    await loadDevices()
+    if (savedDeviceMissing.value) {
+      voice.deviceId = DEFAULT_MICROPHONE_ID
+    }
+    if (savedSpeakerMissing.value) {
+      voice.speakerId = DEFAULT_SPEAKER_ID
+    }
+    if (!options.silent) {
+      ElMessage.success(
+        `检测到 ${microphones.value.length} 个麦克风、${speakers.value.length} 个扬声器`
+      )
+    }
+  } catch (error) {
+    voiceError.value = recordingErrorMessage(error)
+    if (!options.silent) {
+      ElMessage.error(voiceError.value)
+    }
+  } finally {
+    stream?.getTracks().forEach((track) => track.stop())
+    detecting.value = false
+  }
+}
+
+function audioTestErrorMessage(error: unknown): string {
+  if (error instanceof DOMException) {
+    if (error.name === 'NotFoundError' || error.name === 'OverconstrainedError') {
+      return '所选音频设备不可用，请重新选择'
+    }
+    if (error.name === 'NotAllowedError') {
+      return '没有权限访问音频设备'
+    }
+    if (error.name === 'NotSupportedError') {
+      return '当前版本不支持选择扬声器'
+    }
+  }
+  return error instanceof Error ? error.message : '音频测试失败'
+}
+
+async function setAudioOutput(element: HTMLMediaElement, speakerId: string) {
+  const target = element as SinkCapableMediaElement
+  if (typeof target.setSinkId !== 'function') {
+    if (speakerId !== DEFAULT_SPEAKER_ID) {
+      throw new Error('当前版本不支持选择扬声器')
+    }
+    return
+  }
+  await target.setSinkId(speakerId === DEFAULT_SPEAKER_ID ? '' : speakerId)
+}
+
+async function toggleMicTest() {
+  if (micTesting.value) {
+    stopMicTest()
+    return
+  }
+  // 避免扬声器测试的铃声和麦克风实时回放同时播放
+  stopSpeakerTest()
+  try {
+    const deviceId = voice.deviceId === DEFAULT_MICROPHONE_ID ? undefined : voice.deviceId
+    micStream = await openMicrophoneStream(deviceId)
+    const activeLabel = micStream.getAudioTracks()[0]?.label ?? ''
+    if (/virtual|todesk|stereo\s*mix|立体声混音|cable|voicemeeter/i.test(activeLabel)) {
+      ElMessage.warning('当前麦克风可能是虚拟声卡，会采集系统声音；建议改选物理麦克风')
+    }
+    micMonitor = new Audio()
+    micMonitor.srcObject = micStream
+    await setAudioOutput(micMonitor, voice.speakerId)
+    await micMonitor.play()
+
+    micContext = new AudioContext()
+    const source = micContext.createMediaStreamSource(micStream)
+    micAnalyser = micContext.createAnalyser()
+    micAnalyser.fftSize = 2048
+    micAnalyser.smoothingTimeConstant = 0.75
+    source.connect(micAnalyser)
+    micTesting.value = true
+    updateMicLevel()
+  } catch (error) {
+    stopMicTest()
+    ElMessage.error(audioTestErrorMessage(error))
+  }
+}
+
+function updateMicLevel() {
+  if (!micTesting.value || !micAnalyser) return
+  const data = new Float32Array(micAnalyser.fftSize)
+  micAnalyser.getFloatTimeDomainData(data)
+  let sum = 0
+  for (let index = 0; index < data.length; index += 1) {
+    sum += data[index] * data[index]
+  }
+  const rms = Math.sqrt(sum / data.length)
+  const db = rms > 0 ? 20 * Math.log10(rms) : -60
+  micDb.value = Math.max(-60, Math.min(0, db))
+  micFrame = window.requestAnimationFrame(updateMicLevel)
+}
+
+function stopMicTest() {
+  micTesting.value = false
+  if (micFrame !== null) {
+    window.cancelAnimationFrame(micFrame)
+    micFrame = null
+  }
+  micAnalyser?.disconnect()
+  micAnalyser = null
+  micContext?.close().catch(() => {})
+  micContext = null
+  if (micMonitor) {
+    micMonitor.pause()
+    micMonitor.srcObject = null
+    micMonitor = null
+  }
+  micStream?.getTracks().forEach((track) => track.stop())
+  micStream = null
+  micDb.value = -60
+}
+
+async function toggleSpeakerTest() {
+  if (speakerTesting.value) {
+    stopSpeakerTest()
+    return
+  }
+  // 避免麦克风实时回放和铃声同时播放
+  stopMicTest()
+  try {
+    speakerUrl = createRingtoneUrl()
+    speakerAudio = new Audio(speakerUrl)
+    speakerAudio.onended = () => stopSpeakerTest()
+    speakerAudio.onerror = () => {
+      stopSpeakerTest()
+      ElMessage.error('铃声播放失败')
+    }
+    await setAudioOutput(speakerAudio, voice.speakerId)
+    speakerTesting.value = true
+    await speakerAudio.play()
+  } catch (error) {
+    stopSpeakerTest()
+    ElMessage.error(audioTestErrorMessage(error))
+  }
+}
+
+function stopSpeakerTest() {
+  speakerTesting.value = false
+  if (speakerAudio) {
+    speakerAudio.onended = null
+    speakerAudio.onerror = null
+    speakerAudio.pause()
+    speakerAudio.src = ''
+    speakerAudio = null
+  }
+  if (speakerUrl) {
+    URL.revokeObjectURL(speakerUrl)
+    speakerUrl = null
+  }
+}
 
 async function load() {
   loading.value = true
@@ -230,33 +530,164 @@ function goHome() {
   <div class="settings-page">
     <header class="topbar">
       <button class="back-link" type="button" @click="goHome">← 返回岗位</button>
-      <BrandBlock suffix="API 设置" />
-      <span class="status">BYOK</span>
+      <BrandBlock suffix="设置" />
+      <span class="status">LOCAL</span>
     </header>
 
     <main v-loading="loading" class="content">
       <section class="hero">
         <div>
-          <p class="eyebrow">AI PROVIDERS</p>
-          <h1>API 设置</h1>
+          <p class="eyebrow">PREFERENCES</p>
+          <h1>设置</h1>
           <p class="subtitle">
-            配置你自己的大模型 API（DeepSeek、Kimi、智谱、通义千问、OpenAI 等），
-            面试、评估和报告会使用当前激活的配置。API Key 加密存储，只显示掩码。
+            配置面试回答的语音输入和 AI Provider。所有设置只保存在本机，录音不会上传。
           </p>
         </div>
-        <el-button type="primary" size="large" @click="openCreate">新增配置</el-button>
       </section>
 
-      <el-alert
-        v-if="status && !status.aiEnabled"
-        class="mock-alert"
-        type="warning"
-        :closable="false"
-        show-icon
-        title="服务端当前为 Mock 模式（APP_AI_ENABLED=false），保存的 API 配置暂不生效。"
-      />
+      <section class="settings-section voice-section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">VOICE INPUT</p>
+            <h2>语音设置</h2>
+            <p class="section-desc">检测本机麦克风和扬声器，选择面试回答使用的输入设备、输出设备和识别语言。</p>
+          </div>
+          <el-button :loading="detecting" @click="detectDevices">检测设备</el-button>
+        </div>
 
-      <section class="active-banner">
+        <el-form label-position="top" class="voice-form">
+          <div class="voice-grid">
+            <el-form-item label="输入设备">
+              <el-select
+                v-model="voice.deviceId"
+                placeholder="系统默认麦克风"
+                style="width: 100%"
+              >
+                <el-option label="系统默认麦克风" :value="DEFAULT_MICROPHONE_ID" />
+                <el-option
+                  v-for="device in microphones"
+                  :key="device.deviceId"
+                  :label="device.label"
+                  :value="device.deviceId"
+                />
+                <el-option
+                  v-if="savedDeviceMissing"
+                  label="已保存的麦克风（当前未检测到）"
+                  :value="voice.deviceId"
+                />
+              </el-select>
+              <p class="field-hint">
+                {{
+                  microphones.length
+                    ? `已检测到 ${microphones.length} 个输入设备`
+                    : '未读取到独立设备时使用系统默认麦克风；点击“检测设备”可重试'
+                }}
+              </p>
+            </el-form-item>
+
+            <el-form-item label="识别语言">
+              <el-select v-model="voice.language" style="width: 100%">
+                <el-option label="中文（推荐）" value="zh" />
+                <el-option label="英文" value="en" />
+                <el-option label="自动检测" value="auto" />
+              </el-select>
+              <p class="field-hint">录音只在本机识别，选择“自动检测”时由 Whisper 判断语言。</p>
+            </el-form-item>
+          </div>
+
+          <div class="voice-grid voice-test-grid">
+            <el-form-item label="麦克风测试">
+              <div class="device-test-row">
+                <el-button
+                  :type="micTesting ? 'danger' : 'default'"
+                  :plain="micTesting"
+                  @click="toggleMicTest"
+                >
+                  {{ micTesting ? '停止测试' : '测试麦克风' }}
+                </el-button>
+                <div class="db-meter" :class="{ active: micTesting }">
+                  <div class="db-bar"><i :style="{ width: `${micLevelPercent}%` }"></i></div>
+                  <span class="db-value">{{ micDbLabel }}</span>
+                  <span v-if="micTesting" class="live-badge">实时回放</span>
+                </div>
+              </div>
+              <p class="field-hint test-warning">
+                不会播放预置音频，只回放当前麦克风采集的环境声；若听到的是系统声音，请改选物理麦克风
+                （ToDesk、立体声混音等虚拟设备会采集系统音频）。建议戴耳机，避免啸叫。
+              </p>
+            </el-form-item>
+
+            <el-form-item label="扬声器">
+              <div class="device-test-row">
+                <el-select
+                  v-model="voice.speakerId"
+                  placeholder="系统默认扬声器"
+                  class="speaker-select"
+                >
+                  <el-option label="系统默认扬声器" :value="DEFAULT_SPEAKER_ID" />
+                  <el-option
+                    v-for="device in speakers"
+                    :key="device.deviceId"
+                    :label="device.label"
+                    :value="device.deviceId"
+                  />
+                  <el-option
+                    v-if="savedSpeakerMissing"
+                    label="已保存的扬声器（当前未检测到）"
+                    :value="voice.speakerId"
+                  />
+                </el-select>
+                <el-button
+                  :type="speakerTesting ? 'danger' : 'default'"
+                  :plain="speakerTesting"
+                  @click="toggleSpeakerTest"
+                >
+                  {{ speakerTesting ? '停止铃声' : '测试扬声器' }}
+                </el-button>
+              </div>
+              <p class="field-hint">
+                {{
+                  speakers.length
+                    ? `已检测到 ${speakers.length} 个输出设备，点击测试会播放一段铃声`
+                    : '点击“检测设备”读取扬声器名称；未选择时使用系统默认扬声器'
+                }}
+              </p>
+            </el-form-item>
+          </div>
+
+          <el-alert
+            v-if="voiceError"
+            :title="voiceError"
+            type="error"
+            :closable="false"
+            show-icon
+          />
+        </el-form>
+      </section>
+
+      <section class="settings-section api-section">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">AI PROVIDERS</p>
+            <h2>API 设置</h2>
+            <p class="section-desc">
+              配置你自己的大模型 API（DeepSeek、Kimi、智谱、通义千问、OpenAI 等），
+              面试、评估和报告会使用当前激活的配置。API Key 加密存储，只显示掩码。
+            </p>
+          </div>
+          <el-button type="primary" size="large" @click="openCreate">新增配置</el-button>
+        </div>
+
+        <el-alert
+          v-if="status && !status.aiEnabled"
+          class="mock-alert"
+          type="warning"
+          :closable="false"
+          show-icon
+          title="服务端当前为 Mock 模式（APP_AI_ENABLED=false），保存的 API 配置暂不生效。"
+        />
+
+        <section class="active-banner">
         <template v-if="activeProvider">
           <div>
             <span class="active-label">当前使用</span>
@@ -310,6 +741,7 @@ function goHome() {
             <el-button size="small" type="danger" plain @click="remove(provider)">删除</el-button>
           </div>
         </article>
+        </section>
       </section>
     </main>
 
@@ -483,6 +915,125 @@ function goHome() {
   line-height: 1.5;
 }
 
+.settings-section {
+  margin-top: 28px;
+  padding: 24px 26px;
+  border: 1px solid #e4ecf5;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 8px 30px rgba(31, 78, 121, 0.04);
+}
+
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+
+.section-head h2 {
+  margin: 0 0 8px;
+  color: #17375e;
+  font-size: 24px;
+}
+
+.section-desc {
+  max-width: 720px;
+  margin: 0;
+  color: #6b7a8c;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.voice-form {
+  margin-top: 6px;
+}
+
+.voice-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 20px;
+}
+
+.voice-test-grid {
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px dashed #e4ecf5;
+}
+
+.device-test-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.speaker-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.db-meter {
+  flex: 1;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.db-bar {
+  flex: 1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf2f8;
+}
+
+.db-bar i {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #67c23a, #e6a23c 70%, #f56c6c);
+  transition: width 80ms linear;
+}
+
+.db-value {
+  width: 54px;
+  flex: none;
+  color: #8a97a8;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.db-meter.active .db-value {
+  color: #2e75b6;
+}
+
+.live-badge {
+  flex: none;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #eef4fb;
+  color: #2e75b6;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.test-warning {
+  color: #b88230;
+}
+
+.voice-form :deep(.el-alert) {
+  margin-top: 4px;
+}
+
+.api-section .active-banner {
+  margin-top: 20px;
+}
+
 .mock-alert {
   margin-top: 20px;
 }
@@ -575,6 +1126,26 @@ function goHome() {
   .hero {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .settings-section {
+    padding: 20px 18px;
+  }
+
+  .section-head {
+    flex-direction: column;
+  }
+
+  .voice-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .device-test-row {
+    flex-wrap: wrap;
+  }
+
+  .db-meter {
+    min-width: 100%;
   }
 
   .provider-card {

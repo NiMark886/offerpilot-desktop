@@ -10,12 +10,13 @@
 
 前往 [Releases](https://github.com/NiMark886/offerpilot-desktop/releases/latest) 下载：
 
-- `OfferPilot-Electron-0.1.0-x64-setup.exe`
+- `OfferPilot-Electron-0.2.0-x64-setup.exe`
 - 适用系统：Windows 10 / 11 x64
-- 安装包约 215 MB，安装后约 484 MB
+- 安装包约 390 MB，安装后约 676 MB（内置离线语音识别模型）
 - 安装完成后直接运行，无需登录，应用会以本地管理员身份进入首页
+- 桌面版不启用每日面试额度限制，题库和 AI 调用均由本机配置决定
 
-首次使用请打开右上角 **API 设置**，配置自己的大模型 Provider（BYOK）。不配置时，面试蓝图和评估会使用确定性的 Mock/规则模式。
+首次使用请打开右上角 **设置**，配置自己的大模型 Provider（BYOK），并选择面试回答使用的麦克风和语音识别语言。不配置模型时，面试蓝图和评估会使用确定性的 Mock/规则模式。
 
 ## 功能
 
@@ -25,6 +26,10 @@
 - 销售岗面试：粘贴销售 JD，结合简历和销售能力模型生成面试
 - 支持校招 / 1-3 年 / 3-5 年难度，题目按岗位题库检索
 - 多轮追问、提示、跳过、练习模式实时点评
+- 回答输入框支持本地 Whisper 语音输入：录音结束后离线识别，不自动发送，音频不上传
+- 设置页可检测本机麦克风和扬声器，选择输入/输出设备和识别语言（中文 / 英文 / 自动检测），设置保存在本机
+- 麦克风测试会显示实时分贝，并把麦克风声音回放到所选扬声器；扬声器测试会播放一段铃声
+- API Provider 配置统一放在设置页
 - 面试结束后生成五维报告：技术准确性、技术深度、项目表现、表达逻辑、岗位匹配度
 
 ### 简历生成
@@ -81,6 +86,7 @@
 - 后端：Java 21、Spring Boot 3.5、Spring Security、Spring AI
 - 数据：MyBatis-Plus、Flyway、H2
 - 文档解析：PDFBox、Apache POI
+- 本地语音识别：whisper.cpp、Whisper small q5_1、OpenCC
 - 打包：electron-builder、NSIS、jlink JRE
 
 ## 架构
@@ -128,14 +134,15 @@ powershell -ExecutionPolicy Bypass -File .\build-installer.ps1
 
 1. 构建前端（`OFFERPILOT_DESKTOP=true`，使用相对资源路径）
 2. 构建后端 jar
-3. 生成或复用 jlink Java runtime
-4. 复制前端静态资源、后端 jar 和 runtime
-5. 使用 electron-builder 生成 NSIS 安装包
+3. 准备本地 Whisper 运行时和 `ggml-small-q5_1.bin` 模型（首次构建约下载 200 MB）
+4. 生成或复用 jlink Java runtime
+5. 复制前端静态资源、后端 jar、runtime 和 Whisper
+6. 使用 electron-builder 生成 NSIS 安装包
 
 产物：
 
 ```text
-OfferPilot-Electron-0.1.0-x64-setup.exe
+OfferPilot-Electron-0.2.0-x64-setup.exe
 ```
 
 ### 开发调试
@@ -197,4 +204,5 @@ npm run build
 
 - 当前安装包未做代码签名，Windows 可能提示“未知发布者”
 - 本地端口固定为 `18080`
+- 语音输入为录音结束后识别，不是实时逐字上屏；识别结果建议发送前快速校对
 - 向量检索、支付和多端同步尚未接入

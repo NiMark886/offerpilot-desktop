@@ -21,7 +21,6 @@ import com.offerpilot.interview.web.dto.QuestionView;
 import com.offerpilot.job.domain.JobTemplate;
 import com.offerpilot.job.mapper.JobTemplateMapper;
 import com.offerpilot.questionbank.service.QuestionBankRetriever;
-import com.offerpilot.quota.service.QuotaService;
 import com.offerpilot.resume.domain.Resume;
 import com.offerpilot.resume.domain.ResumeProfile;
 import com.offerpilot.resume.mapper.ResumeMapper;
@@ -57,7 +56,6 @@ public class InterviewService {
     private final InterviewTrackService trackService;
     private final RoleProfileParser roleProfileParser;
     private final AiAvailabilityChecker aiAvailabilityChecker;
-    private final QuotaService quotaService;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
 
@@ -72,7 +70,6 @@ public class InterviewService {
                             InterviewTrackService trackService,
                             RoleProfileParser roleProfileParser,
                             AiAvailabilityChecker aiAvailabilityChecker,
-                            QuotaService quotaService,
                             ObjectMapper objectMapper,
                             TransactionTemplate transactionTemplate) {
         this.sessionMapper = sessionMapper;
@@ -86,7 +83,6 @@ public class InterviewService {
         this.trackService = trackService;
         this.roleProfileParser = roleProfileParser;
         this.aiAvailabilityChecker = aiAvailabilityChecker;
-        this.quotaService = quotaService;
         this.objectMapper = objectMapper;
         this.transactionTemplate = transactionTemplate;
     }
@@ -117,7 +113,6 @@ public class InterviewService {
         }
         var retrieved = questionBankRetriever.retrieve(
                 job.getJdText(), tags, roleProfile.isGeneral() ? 50 : 8, trackId);
-        quotaService.checkAvailable(userId);
 
         BlueprintRequest blueprintRequest = new BlueprintRequest(
                 job, track, roleProfile, profile, request.difficulty(), request.durationMinutes(),
@@ -148,8 +143,6 @@ public class InterviewService {
         String finalGenerationMode = generationMode;
 
         return Objects.requireNonNull(transactionTemplate.execute(status -> {
-            quotaService.checkAndConsumeSession(userId);
-
             InterviewSession session = new InterviewSession();
             session.setUserId(userId);
             session.setJobTemplateId(job.getId());
@@ -178,7 +171,6 @@ public class InterviewService {
 
         InterviewTrack track = trackService.requireByCode("sales");
         RoleProfile roleProfile = roleProfileParser.parse(track);
-        quotaService.checkAvailable(userId);
 
         List<String> tags = new ArrayList<>(roleProfile.competencyNames());
         String query = "销售岗面试 " + request.jdText();
@@ -221,7 +213,6 @@ public class InterviewService {
         String finalMode = generationMode;
         InterviewBlueprint finalBlueprint = blueprint;
         return Objects.requireNonNull(transactionTemplate.execute(status -> {
-            quotaService.checkAndConsumeSession(userId);
             jobTemplateMapper.insert(job);
 
             InterviewSession session = new InterviewSession();

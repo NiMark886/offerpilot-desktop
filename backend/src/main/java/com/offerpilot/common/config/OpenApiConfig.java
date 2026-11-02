@@ -16,7 +16,7 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("OfferPilot API")
-                        .version("0.1.0")
+                        .version("0.2.0")
                         .description("OfferPilot AI 面试平台 API"))
                 .components(new Components().addSecuritySchemes("bearerAuth",
                         new SecurityScheme()

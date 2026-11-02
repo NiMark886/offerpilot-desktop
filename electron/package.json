@@ -1,6 +1,6 @@
 {
   "name": "offerpilot-electron",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "OfferPilot desktop (Electron)",
   "main": "main.js",
@@ -17,6 +17,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "speech.js",
       "package.json"
     ],
     "extraResources": [
@@ -31,6 +32,10 @@
       {
         "from": "resources/runtime",
         "to": "runtime"
+      },
+      {
+        "from": "resources/whisper",
+        "to": "whisper"
       }
     ],
     "win": {
